@@ -7,7 +7,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express());
+app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@phassignment.y94e1.mongodb.net/?retryWrites=true&w=majority&appName=phAssignment`;
 
@@ -37,6 +37,13 @@ async function run() {
     // save all newly created users here 
     app.post("/users", async (req, res) => {
       const userData = req.body;
+      const query ={email: userData?.email}
+      console.log(userData);
+
+      const existingUser = await userCollection.findOne(query);
+      if(existingUser){
+        return res.send({message: "user already exist", insertedId: null})
+      }
       const result = await userCollection.insertOne(userData);
       res.send(result);
     });
