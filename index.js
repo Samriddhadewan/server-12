@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 var jwt = require("jsonwebtoken");
 
 const app = express();
@@ -97,11 +97,37 @@ async function run() {
     });
 
     // camp apis here
+    // post a camp 
     app.post("/camps",verifyToken,verifyAdmin, async (req, res) => {
       const campData = req.body;
       const result = await campCollection.insertOne(campData);
       res.send(result);
     });
+    // get all camps 
+    app.get("/camps", verifyToken,verifyAdmin, async(req,res)=>{
+      const result = await campCollection.find().toArray();
+      res.send(result)
+    })
+    // get a single camp data 
+    app.get("/camps/:id", async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await campCollection.findOne(query);
+      res.send(result);
+    })
+    // update a camp data 
+    app.patch("/camps/:id",verifyToken,verifyAdmin, async(req,res)=>{
+      const id = req.params.id;
+      const updateData = req.body;
+      const query = {_id: new ObjectId(id)}
+      const options = {upsert : true};
+      const updateDoc = {
+        $set:{...updateData}
+      }
+      const result = await campCollection.updateOne(query,updateDoc,options);
+      res.send(result);
+    })
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
