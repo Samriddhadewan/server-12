@@ -127,6 +127,13 @@ async function run() {
       const result = await campCollection.updateOne(query,updateDoc,options);
       res.send(result);
     })
+    // dele a camp 
+    app.delete("/camps/:id",verifyToken,verifyAdmin, async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await campCollection.deleteOne(query);
+      res.send(result);
+    })
 
   } finally {
     // Ensures that the client will close when you finish/error
