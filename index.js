@@ -74,7 +74,6 @@ async function run() {
     app.post("/users", async (req, res) => {
       const userData = req.body;
       const query = { email: userData?.email };
-      console.log(userData);
 
       const existingUser = await userCollection.findOne(query);
       if (existingUser) {
@@ -104,7 +103,7 @@ async function run() {
       res.send(result);
     });
     // get all camps 
-    app.get("/camps", verifyToken,verifyAdmin, async(req,res)=>{
+    app.get("/camps", async(req,res)=>{
       const result = await campCollection.find().toArray();
       res.send(result)
     })
