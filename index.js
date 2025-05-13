@@ -7,7 +7,6 @@ var jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
 
-
 const stripe = require("stripe")(process.env.STRIPE_SK);
 
 app.use(cors());
@@ -38,7 +37,6 @@ async function run() {
     const campCollection = client.db("Assignment12").collection("camps");
     const requestCollection = client.db("Assignment12").collection("requests");
     const paymentCollection = client.db("Assignment12").collection("payments");
-
 
     // JWT RELATED APIS
     app.post("/jwt", async (req, res) => {
@@ -102,7 +100,7 @@ async function run() {
     });
 
     // request apis here
-    app.post("/requests",verifyToken, async (req, res) => {
+    app.post("/requests", verifyToken, async (req, res) => {
       const requestData = req.body;
       const campId = requestData.camp_id;
       const query = {
@@ -112,8 +110,12 @@ async function run() {
 
       const existingRequest = await requestCollection.findOne(query);
       if (existingRequest) {
-        return res.status(400)
-          .send({ success: false,message: "You have already applied for this campaign" });
+        return res
+          .status(400)
+          .send({
+            success: false,
+            message: "You have already applied for this campaign",
+          });
       }
       const result = await requestCollection.insertOne(requestData);
 
@@ -128,19 +130,19 @@ async function run() {
 
       res.send(result);
     });
-    // get all requests 
-    app.get("/requests",verifyToken,verifyAdmin, async(req,res)=>{
+    // get all requests
+    app.get("/requests", verifyToken, verifyAdmin, async (req, res) => {
       const result = await requestCollection.find().toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-    // get the requests by emails 
-    app.get("/requests/:email", verifyToken, async(req,res)=>{
+    // get the requests by emails
+    app.get("/requests/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
-      const query = {participant_email: email}
+      const query = { participant_email: email };
       const result = await requestCollection.find(query).toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     // camp apis here
     // post a camp
@@ -181,75 +183,95 @@ async function run() {
       res.send(result);
     });
 
-    // payment intend 
-    app.post("/create-payment-intent", verifyToken, async(req,res)=>{
-      const {price} = req.body;
+    // payment intend
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const { price } = req.body;
       const amount = parseInt(price * 100);
-
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
-        payment_method_types: ["card"]
+        payment_method_types: ["card"],
       });
 
       res.send({
-        clientSecret: paymentIntent.client_secret
-      })
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
 
-
-    })
-
-    // insert payment data 
-    app.post("/payment",verifyToken, async(req, res)=>{
+    // insert payment data
+    app.post("/payment", verifyToken, async (req, res) => {
       const paymentData = req.body;
       const result = await paymentCollection.insertOne(paymentData);
-      console.log(paymentData)
+      console.log(paymentData);
       const query = {
         camp_id: paymentData?.camp_id,
-        participant_name : paymentData?.participant_name
-      }
+        participant_name: paymentData?.participant_name,
+      };
       const updateDoc = {
-        $set:{
+        $set: {
           payment_status: "paid",
-        }
-      }
-      const update = await requestCollection.updateOne(query,updateDoc)
-      res.send(result)
-    })
+        },
+      };
+      const update = await requestCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
-    // confirmation status confirm 
-    app.patch("/request-confirm/:id",verifyToken,verifyAdmin, async(req,res)=>{
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const updateDoc = {
-        $set:{
-          confirmation_status : "confirmed"
-        }
+    // confirmation status confirm
+    app.patch(
+      "/request-confirm/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            confirmation_status: "confirmed",
+          },
+        };
+        const result = await requestCollection.updateOne(query, updateDoc);
+        res.send(result);
       }
-      const result = await requestCollection.updateOne(query,updateDoc);
-      res.send(result)
-    })
+    );
 
     // delete request by admin
-    app.delete("/request-delete/admin/:id",verifyToken,verifyAdmin, async(req,res)=>{
+    app.delete(
+      "/request-delete/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const campId = req.query.campId;
+        const deleteQuery = { _id: new ObjectId(id) };
+        const result = await requestCollection.deleteOne(deleteQuery);
+        const query = { _id: new ObjectId(campId) };
+        const updateDoc = {
+          $inc: {
+            participant_count: -1,
+          },
+        };
+        const update = await campCollection.updateOne(query, updateDoc);
+
+        res.send(result);
+      }
+    );
+
+    // delete request by user
+    app.delete("/request-delete/user/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const campId = req.query.campId;
-      const deleteQuery = {_id: new ObjectId(id)}
-      const result = await requestCollection.deleteOne(deleteQuery)
-      const query = {_id: new ObjectId(campId)}
+      const deleteQuery = { _id: new ObjectId(id) };
+      const result = await requestCollection.deleteOne(deleteQuery);
+      const query = { _id: new ObjectId(campId) };
       const updateDoc = {
         $inc: {
-          participant_count :-1
-        }
-      }
-      const update = await campCollection.updateOne(query,updateDoc)
-      
-      res.send(result)
-    })
-
-
-
+          participant_count: -1,
+        },
+      };
+      const update = await campCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
