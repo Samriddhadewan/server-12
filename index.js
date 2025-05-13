@@ -37,6 +37,7 @@ async function run() {
     const campCollection = client.db("Assignment12").collection("camps");
     const requestCollection = client.db("Assignment12").collection("requests");
     const paymentCollection = client.db("Assignment12").collection("payments");
+    const reviewCollection = client.db("Assignment12").collection("reviews");
 
     // JWT RELATED APIS
     app.post("/jwt", async (req, res) => {
@@ -110,12 +111,10 @@ async function run() {
 
       const existingRequest = await requestCollection.findOne(query);
       if (existingRequest) {
-        return res
-          .status(400)
-          .send({
-            success: false,
-            message: "You have already applied for this campaign",
-          });
+        return res.status(400).send({
+          success: false,
+          message: "You have already applied for this campaign",
+        });
       }
       const result = await requestCollection.insertOne(requestData);
 
@@ -272,6 +271,51 @@ async function run() {
       const update = await campCollection.updateOne(query, updateDoc);
       res.send(result);
     });
+
+    // ALL PAYMENT HISTORY APIS
+    app.get("/payment-history/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { participant_email: email };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+    // storing all the reviews here 
+    app.post("/reviews",verifyToken, async (req, res) => {
+      const reviewData = req.body;
+      const campId = reviewData.camp_id;
+      const query = { camp_id: campId, participant_email: reviewData?.email };
+      const updateDoc = {
+        $set: {
+          review_status: "given",
+        },
+      };
+      const update = await requestCollection.updateOne(query, updateDoc);
+
+      const result = await reviewCollection.insertOne(reviewData);
+      res.send(result);
+    });
+    
+    // get all the user stats from here 
+    app.get("/user-stats/:email", async(req,res)=>{
+      const email = req.params.email;
+
+      const totalRequests = await requestCollection.estimatedDocumentCount({
+        participant_email: email
+      })
+      const totalPayments = await paymentCollection.estimatedDocumentCount({
+        participant_email: email
+      })
+      const totalReviews = await paymentCollection.estimatedDocumentCount({
+        email: email
+      })
+
+      res.send({totalRequests, totalPayments, totalReviews})
+    })
+
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
