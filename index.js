@@ -333,6 +333,21 @@ async function run() {
         res.status(500).send({ error: "Profile update failed" });
       }
     });
+
+    // top events 
+    app.get("/top-events", async(req,res)=>{
+      const result = await campCollection.find().sort({participant_count : -1}).limit(6).toArray();;
+      res.send(result);
+    })
+
+    // review Collections 
+    app.get("/reviews", async(req,res)=>{
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    })
+
+
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
