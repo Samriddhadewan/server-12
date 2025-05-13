@@ -201,7 +201,7 @@ async function run() {
     })
 
     // insert payment data 
-    app.post("/payment", async(req, res)=>{
+    app.post("/payment",verifyToken, async(req, res)=>{
       const paymentData = req.body;
       const result = await paymentCollection.insertOne(paymentData);
       console.log(paymentData)
@@ -212,10 +212,39 @@ async function run() {
       const updateDoc = {
         $set:{
           payment_status: "paid",
-          confirmation_status: "confirmed",
         }
       }
       const update = await requestCollection.updateOne(query,updateDoc)
+      res.send(result)
+    })
+
+    // confirmation status confirm 
+    app.patch("/request-confirm/:id",verifyToken,verifyAdmin, async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const updateDoc = {
+        $set:{
+          confirmation_status : "confirmed"
+        }
+      }
+      const result = await requestCollection.updateOne(query,updateDoc);
+      res.send(result)
+    })
+
+    // delete request by admin
+    app.delete("/request-delete/admin/:id",verifyToken,verifyAdmin, async(req,res)=>{
+      const id = req.params.id;
+      const campId = req.query.campId;
+      const deleteQuery = {_id: new ObjectId(id)}
+      const result = await requestCollection.deleteOne(deleteQuery)
+      const query = {_id: new ObjectId(campId)}
+      const updateDoc = {
+        $inc: {
+          participant_count :-1
+        }
+      }
+      const update = await campCollection.updateOne(query,updateDoc)
+      
       res.send(result)
     })
 
