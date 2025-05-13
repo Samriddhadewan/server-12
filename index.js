@@ -280,8 +280,8 @@ async function run() {
       const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
-    // storing all the reviews here 
-    app.post("/reviews",verifyToken, async (req, res) => {
+    // storing all the reviews here
+    app.post("/reviews", verifyToken, async (req, res) => {
       const reviewData = req.body;
       const campId = reviewData.camp_id;
       const query = { camp_id: campId, participant_email: reviewData?.email };
@@ -295,27 +295,44 @@ async function run() {
       const result = await reviewCollection.insertOne(reviewData);
       res.send(result);
     });
-    
-    // get all the user stats from here 
-    app.get("/user-stats/:email", async(req,res)=>{
+
+    // get all the user stats from here
+    app.get("/user-stats/:email",verifyToken, async (req, res) => {
       const email = req.params.email;
 
-      const totalRequests = await requestCollection.estimatedDocumentCount({
-        participant_email: email
-      })
-      const totalPayments = await paymentCollection.estimatedDocumentCount({
-        participant_email: email
-      })
-      const totalReviews = await paymentCollection.estimatedDocumentCount({
-        email: email
-      })
+      const totalRequests = await requestCollection.countDocuments({
+        participant_email: email,
+      });
+      const totalPayments = await paymentCollection.countDocuments({
+        participant_email: email,
+      });
+      const totalReviews = await reviewCollection.countDocuments({
+        email: email,
+      });
 
-      res.send({totalRequests, totalPayments, totalReviews})
-    })
+      res.send({ totalRequests, totalPayments, totalReviews });
+    });
 
-
-
-
+    // update user profile api
+    app.patch("/update-user/:email",verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const { name, photo, contact } = req.body;
+      const query = {
+        email: email,
+      };
+      try {
+        const result = await userCollection.updateOne(query, {
+          $set: {
+            name: name,
+            contact: contact
+          },
+        });
+        res.send(result);
+      } catch (error) {
+        console.error("Update failed:", error);
+        res.status(500).send({ error: "Profile update failed" });
+      }
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
