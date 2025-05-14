@@ -26,12 +26,12 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
 
     const userCollection = client.db("Assignment12").collection("users");
     const campCollection = client.db("Assignment12").collection("camps");
@@ -152,7 +152,14 @@ async function run() {
     });
     // get all camps
     app.get("/camps", async (req, res) => {
-      const result = await campCollection.find().toArray();
+      const search = req.query.search;
+      let query = {};
+      if(search){
+        query={
+          camp_name : {$regex : search, $options: "i"},
+        }
+      }
+      const result = await campCollection.find(query).toArray();
       res.send(result);
     });
     // get a single camp data
